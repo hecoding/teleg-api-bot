@@ -30,6 +30,9 @@
 
 import requests
 import yaml
+import re
+import os
+import importlib.machinery
 from pkg_resources import resource_stream
 
 from telegapi.exceptions import ConnectionFailedException as ConnectionFailedException
@@ -73,6 +76,21 @@ class TelegBot:
 
     def get_bot_username(self):
         return self.data["username"]
+
+    def load_plugins(self, path):
+        pysearchre = re.compile('.py$', re.IGNORECASE)
+        pluginfiles = filter(pysearchre.search, os.listdir(path))
+
+        pluginnames = []
+        modules = []
+        for plugin in pluginfiles:
+            if not plugin.startswith('__'):
+                name = plugin.rpartition('.')[0]
+                pluginnames.append(name[0].upper() + name[1:])
+                modules.append(importlib.machinery.SourceFileLoader(name, path + '/' + plugin).load_module())
+
+        for i in range(len(modules)):
+            setattr(self, pluginnames[i][0].lower() + pluginnames[i][1:], getattr(modules[i], pluginnames[i])(self))
 
     def run(self):
         last_message_update_id = 0
